@@ -1988,25 +1988,51 @@
       showToast(type === "pdf" ? "📄 Generating PDF report..." : "{ } Exporting JSON data...");
       try {
         if (type === "pdf") {
-          const res = await fetchWithRetry(`${API_BASE}/export/pdf`, {
+          // Use raw fetch for binary PDF — fetchWithRetry consumes body on error check
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000);
+          const res = await fetch(`${API_BASE}/export/pdf`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(currentResults)
+            body: JSON.stringify(currentResults),
+            signal: controller.signal
           });
-          const blob = await res.blob();
+          clearTimeout(timeoutId);
+          if (!res.ok) {
+            throw new Error(`Server error ${res.status}: ${res.statusText}`);
+          }
+          const arrayBuffer = await res.arrayBuffer();
+          const blob = new Blob([arrayBuffer], { type: "application/pdf" });
           const url = URL.createObjectURL(blob);
-          const a = document.createElement("a"); a.href = url; a.download = "devguard-report.pdf"; a.click();
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "devguard-report.pdf";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
         } else {
           const blob = new Blob([JSON.stringify(currentResults, null, 2)], { type: "application/json" });
           const url = URL.createObjectURL(blob);
-          const a = document.createElement("a"); a.href = url; a.download = "devguard-report.json"; a.click();
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "devguard-report.json";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
         showToast("✅ " + (type === "pdf" ? "PDF Report" : "JSON Export") + " downloaded!");
       } catch (e) {
         console.error(e);
-        showToast("❌ Export failed: " + (e.message || "Check connection."));
+        if (e.name === "AbortError") {
+          showToast("❌ Export timed out. The server may be starting up — please try again.");
+        } else {
+          showToast("❌ Export failed: " + (e.message || "Check connection."));
+        }
       }
     };
   </script>
 </body>
+
 </html>
