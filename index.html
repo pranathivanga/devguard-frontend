@@ -1,0 +1,1990 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevGuard — DevSecOps Secret Leakage Detection Platform</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;800&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* ───────────────────── RESET & VARIABLES ───────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-deep: #030712;
+      --bg-navy: #060d1f;
+      --bg-card: rgba(10, 20, 45, 0.65);
+      --bg-glass: rgba(14, 28, 60, 0.55);
+      --border: rgba(56, 120, 255, 0.18);
+      --border-hi: rgba(56, 120, 255, 0.45);
+
+      --cyan: #00d4ff;
+      --cyan-dim: rgba(0, 212, 255, 0.12);
+      --blue: #3878ff;
+      --blue-glow: rgba(56, 120, 255, 0.35);
+
+      --red: #ff3860;
+      --red-glow: rgba(255, 56, 96, 0.35);
+      --red-dim: rgba(255, 56, 96, 0.12);
+
+      --orange: #ff8c00;
+      --orange-glow: rgba(255, 140, 0, 0.35);
+      --orange-dim: rgba(255, 140, 0, 0.12);
+
+      --green: #00e676;
+      --green-glow: rgba(0, 230, 118, 0.35);
+      --green-dim: rgba(0, 230, 118, 0.12);
+
+      --text-hi: #e8f0ff;
+      --text-mid: #8ca0c8;
+      --text-lo: #4a5a7a;
+
+      --radius: 14px;
+      --radius-lg: 20px;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-ui: 'Rajdhani', sans-serif;
+      --font-head: 'Exo 2', sans-serif;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text-hi);
+      font-family: var(--font-ui);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ──── ANIMATED GRID BACKGROUND ──── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(56, 120, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 120, 255, 0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(14, 40, 100, 0.55) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ──── SCROLLBAR ──── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-deep);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--blue);
+      border-radius: 4px;
+    }
+
+    /* ──── LAYOUT ──── */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ═══════════════════════════════════════
+     NAVBAR
+  ═══════════════════════════════════════ */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(3, 7, 18, 0.82);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+    }
+
+    .nav-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      gap: 20px;
+    }
+
+    .nav-logo {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+    }
+
+    .nav-logo .logo-name {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 22px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 1px;
+    }
+
+    .nav-logo .logo-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-mid);
+      letter-spacing: 0.5px;
+    }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--green-dim);
+      border: 1px solid rgba(0, 230, 118, 0.25);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--green);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse-green 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-green {
+
+      0%,
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 6px var(--green);
+      }
+
+      50% {
+        opacity: 0.6;
+        box-shadow: 0 0 14px var(--green);
+      }
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 6px;
+    }
+
+    .nav-links a {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-mid);
+      text-decoration: none;
+      transition: all .2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--cyan);
+      background: var(--cyan-dim);
+    }
+
+    /* ═══════════════════════════════════════
+     HERO
+  ═══════════════════════════════════════ */
+    .hero {
+      padding: 90px 24px 70px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--cyan-dim);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 20px;
+      padding: 5px 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--cyan);
+      margin-bottom: 28px;
+      letter-spacing: 1px;
+      animation: fadeUp .6s ease both;
+    }
+
+    .hero-badge::before {
+      content: '//';
+      opacity: .5;
+    }
+
+    .hero h1 {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: clamp(32px, 5vw, 58px);
+      line-height: 1.1;
+      margin-bottom: 20px;
+      animation: fadeUp .7s .1s ease both;
+    }
+
+    .hero h1 .accent {
+      color: var(--cyan);
+    }
+
+    .hero h1 .accent-red {
+      color: var(--red);
+    }
+
+    .hero-sub {
+      max-width: 560px;
+      margin: 0 auto 40px;
+      color: var(--text-mid);
+      font-size: 16px;
+      animation: fadeUp .7s .2s ease both;
+    }
+
+    .hero-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      color: #fff;
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 16px;
+      padding: 14px 36px;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 0 30px var(--blue-glow), 0 4px 20px rgba(0, 0, 0, .4);
+      transition: all .25s;
+      animation: fadeUp .7s .3s ease both;
+      text-decoration: none;
+    }
+
+    .hero-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 50px var(--blue-glow), 0 8px 30px rgba(0, 0, 0, .4);
+    }
+
+    .hero-cta svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ═══════════════════════════════════════
+     SECTION LABEL
+  ═══════════════════════════════════════ */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-lo);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .section-label::before,
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ═══════════════════════════════════════
+     SCAN CARDS SECTION
+  ═══════════════════════════════════════ */
+    #scan {
+      padding: 0 0 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .scan-grid {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+
+    .scan-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all .3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scan-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(56, 120, 255, 0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .scan-card:hover {
+      border-color: var(--border-hi);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .4), 0 0 40px var(--blue-glow);
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      font-size: 22px;
+    }
+
+    .card-icon.cyan-icon {
+      background: var(--cyan-dim);
+      color: var(--cyan);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+    }
+
+    .card-icon.blue-icon {
+      background: rgba(56, 120, 255, 0.12);
+      color: var(--blue);
+      border: 1px solid rgba(56, 120, 255, 0.2);
+    }
+
+    .card-icon.purple-icon {
+      background: rgba(160, 80, 255, 0.12);
+      color: #a050ff;
+      border: 1px solid rgba(160, 80, 255, 0.2);
+    }
+
+    .scan-card h3 {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .scan-card p {
+      color: var(--text-mid);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    /* Code Textarea */
+    .code-textarea {
+      width: 100%;
+      min-height: 150px;
+      resize: vertical;
+      background: rgba(0, 0, 0, 0.5);
+      color: var(--cyan);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.7;
+      outline: none;
+      transition: border-color .2s;
+      margin-bottom: 16px;
+    }
+
+    .code-textarea:focus {
+      border-color: var(--cyan);
+    }
+
+    .code-textarea::placeholder {
+      color: var(--text-lo);
+    }
+
+    /* Upload Area */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragging {
+      border-color: var(--blue);
+      background: rgba(56, 120, 255, 0.07);
+    }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-icon {
+      font-size: 30px;
+      margin-bottom: 10px;
+    }
+
+    .upload-zone p {
+      color: var(--text-mid);
+      font-size: 13px;
+    }
+
+    .upload-zone span {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-lo);
+    }
+
+    .upload-filename {
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      margin-top: 8px;
+      min-height: 16px;
+    }
+
+    /* GitHub Input */
+    .repo-input-wrap {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .repo-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      color: var(--text-hi);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 14px 13px 44px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color .2s;
+    }
+
+    .repo-input:focus {
+      border-color: var(--blue);
+    }
+
+    .repo-input::placeholder {
+      color: var(--text-lo);
+    }
+
+    .repo-input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-lo);
+      font-size: 16px;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 15px;
+      border: none;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      color: #fff;
+      box-shadow: 0 4px 20px var(--blue-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px var(--blue-glow);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Scanning spinner */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-top-color: #fff;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ═══════════════════════════════════════
+     RESULTS SECTION
+  ═══════════════════════════════════════ */
+    #results {
+      padding: 0 0 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    #results-wrapper {
+      display: none;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      text-align: center;
+      transition: all .3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    .stat-card.files::after {
+      background: linear-gradient(90deg, var(--blue), var(--cyan));
+    }
+
+    .stat-card.findings::after {
+      background: linear-gradient(90deg, var(--red), var(--orange));
+    }
+
+    .stat-card.score::after {
+      background: linear-gradient(90deg, var(--orange), var(--red));
+    }
+
+    .stat-card.high::after {
+      background: var(--red);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .4);
+    }
+
+    .stat-num {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 40px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-card.files .stat-num {
+      color: var(--cyan);
+    }
+
+    .stat-card.findings .stat-num {
+      color: var(--orange);
+    }
+
+    .stat-card.score .stat-num {
+      color: var(--orange);
+    }
+
+    .stat-card.high .stat-num {
+      color: var(--red);
+      text-shadow: 0 0 20px var(--red);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-mid);
+      font-weight: 600;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    /* ─── RESULTS LAYOUT ─── */
+    .results-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .results-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ─── RISK METER ─── */
+    .risk-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .risk-title {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-mid);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .risk-svg-wrap {
+      position: relative;
+      width: 160px;
+      height: 160px;
+    }
+
+    .risk-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .risk-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.06);
+      stroke-width: 10;
+    }
+
+    .risk-bar {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dasharray 1s ease, stroke .5s;
+    }
+
+    .risk-center-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .risk-pct {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 30px;
+    }
+
+    .risk-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-top: 4px;
+    }
+
+    /* ─── FINDINGS TABLE ─── */
+    .findings-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .findings-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .findings-header h3 {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .findings-count {
+      background: var(--red-dim);
+      border: 1px solid rgba(255, 56, 96, 0.25);
+      color: var(--red);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .file-row {
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .file-row:last-child {
+      border-bottom: none;
+    }
+
+    .file-row-header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background .2s;
+      user-select: none;
+    }
+
+    .file-row-header:hover {
+      background: rgba(56, 120, 255, 0.06);
+    }
+
+    .file-name {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      flex: 1;
+      color: var(--text-hi);
+    }
+
+    .sev-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+    }
+
+    .sev-high {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255, 56, 96, 0.3);
+      box-shadow: 0 0 10px var(--red-dim);
+    }
+
+    .sev-medium {
+      background: var(--orange-dim);
+      color: var(--orange);
+      border: 1px solid rgba(255, 140, 0, 0.3);
+      box-shadow: 0 0 10px var(--orange-dim);
+    }
+
+    .sev-low {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+      box-shadow: 0 0 10px var(--green-dim);
+    }
+
+    .chevron {
+      color: var(--text-lo);
+      transition: transform .25s;
+      font-size: 12px;
+    }
+
+    .file-row.open .chevron {
+      transform: rotate(90deg);
+    }
+
+    .file-findings {
+      display: none;
+      padding: 0 24px 16px;
+    }
+
+    .file-row.open .file-findings {
+      display: block;
+    }
+
+    .finding-item {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 8px;
+      align-items: start;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    .finding-item.high-item {
+      background: var(--red-dim);
+      border-left: 3px solid var(--red);
+    }
+
+    .finding-item.medium-item {
+      background: var(--orange-dim);
+      border-left: 3px solid var(--orange);
+    }
+
+    .finding-item.low-item {
+      background: var(--green-dim);
+      border-left: 3px solid var(--green);
+    }
+
+    .finding-line {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-mid);
+    }
+
+    .finding-value {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .finding-type {
+      font-size: 11px;
+      color: var(--text-mid);
+      margin-top: 3px;
+    }
+
+    /* ─── SIDE PANEL ─── */
+    .side-col {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ─── ACTIVITY LOG ─── */
+    .activity-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .activity-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .activity-header::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    .activity-list {
+      max-height: 340px;
+      overflow-y: auto;
+    }
+
+    .activity-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      transition: background .2s;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-item:hover {
+      background: rgba(56, 120, 255, 0.05);
+    }
+
+    .act-name {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-hi);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .act-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .act-time {
+      font-size: 11px;
+      color: var(--text-lo);
+    }
+
+    .act-sev {
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+
+    /* ─── DOWNLOAD SECTION ─── */
+    #download {
+      padding: 0 0 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .download-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      text-align: center;
+    }
+
+    .download-card h3 {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .download-card p {
+      color: var(--text-mid);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    .download-btns {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .dl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 28px;
+      border-radius: 10px;
+      border: none;
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all .25s;
+      text-decoration: none;
+    }
+
+    .dl-btn-pdf {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255, 56, 96, 0.3);
+      box-shadow: 0 0 20px var(--red-dim);
+    }
+
+    .dl-btn-pdf:hover {
+      background: rgba(255, 56, 96, 0.25);
+      box-shadow: 0 0 35px var(--red-glow);
+      transform: translateY(-2px);
+    }
+
+    .dl-btn-json {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+      box-shadow: 0 0 20px var(--green-dim);
+    }
+
+    .dl-btn-json:hover {
+      background: rgba(0, 230, 118, 0.2);
+      box-shadow: 0 0 35px var(--green-glow);
+      transform: translateY(-2px);
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 24px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .footer-logo {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 18px;
+      color: var(--cyan);
+      margin-bottom: 6px;
+    }
+
+    .footer-tech {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-lo);
+      margin-bottom: 12px;
+    }
+
+    .footer-copy {
+      font-size: 12px;
+      color: var(--text-lo);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .footer-links a {
+      font-size: 12px;
+      color: var(--text-lo);
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--cyan);
+    }
+
+    /* ─── TOAST ─── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      z-index: 999;
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-hi);
+      border-radius: 12px;
+      padding: 14px 22px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--cyan);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, .5);
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all .35s cubic-bezier(.34, 1.56, .64, 1);
+      pointer-events: none;
+      max-width: 320px;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* ─── UTILITY ─── */
+    .hidden {
+      display: none !important;
+    }
+
+    section {
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    /* ─── SCAN PLACEHOLDER ─── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      color: var(--text-lo);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 48px;
+      margin-bottom: 14px;
+      opacity: .4;
+    }
+
+    .empty-state p {
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    @media (max-width: 640px) {
+      .nav-links {
+        display: none;
+      }
+
+      .hero h1 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ══════════════ NAVBAR ══════════════ -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <span class="logo-name">⬡ DevGuard</span>
+        <span class="logo-sub">DevSecOps Secret Leakage Detection Platform</span>
+      </div>
+      <div class="nav-links">
+        <a href="#scan">Scan</a>
+        <a href="#results">Results</a>
+        <a href="#download">Export</a>
+      </div>
+      <div class="nav-status">
+        <div class="status-dot"></div>
+        System Active
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════════ HERO ══════════════ -->
+  <section class="hero">
+    <div class="hero-badge">DEVSECOPS PLATFORM v2.5</div>
+    <h1>Scan Code. <span class="accent">Detect Secrets.</span><br><span class="accent-red">Prevent Leaks.</span></h1>
+    <p class="hero-sub">DevGuard continuously scans your repositories, files, and code snippets for exposed API keys,
+      passwords, tokens, and credentials — before attackers find them.</p>
+    <a href="#scan" class="hero-cta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      Start Scanning
+    </a>
+  </section>
+
+  <!-- ══════════════ SCAN OPTIONS ══════════════ -->
+  <section id="scan">
+    <div class="container">
+      <div class="section-label">Scan Options</div>
+      <div class="scan-grid">
+
+        <!-- ── Card 1: Paste Code ── -->
+        <div class="scan-card">
+          <div class="card-icon cyan-icon">⌨</div>
+          <h3>Paste Code</h3>
+          <p>Paste any code snippet, config file, or text to instantly scan for leaked secrets.</p>
+          <textarea id="paste-input" class="code-textarea"
+            placeholder="// Paste your code here...&#10;const API_KEY = 'sk-...'&#10;DB_PASSWORD = 'example'"></textarea>
+          <button class="btn btn-primary" id="btn-paste" onclick="scanText()">
+            <span class="spinner" id="spinner-paste"></span>
+            <span id="lbl-paste">⚡ Scan Code</span>
+          </button>
+        </div>
+
+        <!-- ── Card 2: Upload File ── -->
+        <div class="scan-card">
+          <div class="card-icon blue-icon">📁</div>
+          <h3>Upload File</h3>
+          <p>Upload a ZIP archive, .java, .env, .txt, or any source file for deep scanning.</p>
+          <div class="upload-zone" id="upload-zone">
+            <input type="file" id="file-input" accept=".zip,.java,.txt,.env,.py,.js,.ts,.yaml,.yml,.json,.xml,.sh"
+              onchange="handleFileChange(this)" />
+            <div class="upload-icon">☁</div>
+            <p>Drag & drop or <strong style="color:var(--cyan)">browse file</strong></p>
+            <span>ZIP • JAVA • ENV • TXT • PY • JS • YAML</span>
+            <div class="upload-filename" id="upload-filename"></div>
+          </div>
+          <button class="btn btn-primary" id="btn-file" onclick="scanFile()">
+            <span class="spinner" id="spinner-file"></span>
+            <span id="lbl-file">📤 Upload & Scan</span>
+          </button>
+        </div>
+
+        <!-- ── Card 3: GitHub Repo ── -->
+        <div class="scan-card">
+          <div class="card-icon purple-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
+            </svg>
+          </div>
+          <h3>Scan GitHub Repo</h3>
+          <p>Provide a public or private GitHub repository URL to perform a full history scan.</p>
+          <div class="repo-input-wrap">
+            <span class="repo-input-icon">🔗</span>
+            <input type="text" id="repo-url" class="repo-input" placeholder="https://github.com/user/repo.git"
+              value="" />
+          </div>
+          <button class="btn btn-primary" id="btn-repo" onclick="scanRepo()">
+            <span class="spinner" id="spinner-repo"></span>
+            <span id="lbl-repo">🔍 Scan Repository</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ RESULTS ══════════════ -->
+  <section id="results" style="padding-top:56px">
+    <div class="container">
+      <div class="section-label">Scan Results</div>
+      <div id="results-empty" class="empty-state">
+        <div class="empty-icon">🛡</div>
+        <p>// No scan results yet. Run a scan above to see findings.</p>
+      </div>
+      <div id="results-wrapper">
+
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card files">
+            <div class="stat-num" id="stat-files">0</div>
+            <div class="stat-label">Total Files</div>
+          </div>
+          <div class="stat-card findings">
+            <div class="stat-num" id="stat-findings">0</div>
+            <div class="stat-label">Total Findings</div>
+          </div>
+          <div class="stat-card score">
+            <div class="stat-num" id="stat-score">0</div>
+            <div class="stat-label">Risk Score</div>
+          </div>
+          <div class="stat-card high">
+            <div class="stat-num" id="stat-high">0</div>
+            <div class="stat-label">HIGH Severity</div>
+          </div>
+        </div>
+
+        <!-- Results Layout -->
+        <div class="results-layout">
+
+          <!-- Main Panel: Findings Table -->
+          <div>
+            <div class="findings-panel">
+              <div class="findings-header">
+                <h3>📋 File-wise Findings</h3>
+                <span class="findings-count" id="findings-count-badge">0 findings</span>
+              </div>
+              <div id="findings-list"></div>
+            </div>
+          </div>
+
+          <!-- Side Panel -->
+          <div class="side-col">
+            <!-- Risk Meter -->
+            <div class="risk-panel">
+              <div class="risk-title">Risk Meter</div>
+              <div class="risk-svg-wrap">
+                <svg class="risk-svg" viewBox="0 0 100 100">
+                  <circle class="risk-track" cx="50" cy="50" r="40" />
+                  <circle class="risk-bar" id="risk-bar" cx="50" cy="50" r="40" stroke-dasharray="0 251.2"
+                    stroke="#00e676" />
+                </svg>
+                <div class="risk-center-text">
+                  <span class="risk-pct" id="risk-pct" style="color:var(--green)">0%</span>
+                  <span class="risk-badge" id="risk-label"
+                    style="background:var(--green-dim);color:var(--green)">LOW</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="activity-panel">
+              <div class="activity-header">Activity Log</div>
+              <div class="activity-list" id="activity-list">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ DOWNLOAD ══════════════ -->
+  <section id="download" style="padding-top:56px">
+    <div class="container">
+      <div class="section-label">Export Report</div>
+      <div class="download-card">
+        <h3>Download Your Security Report</h3>
+        <p>Export a comprehensive audit trail for your DevSecOps pipeline, compliance documentation, or security team
+          review.</p>
+        <div class="download-btns">
+          <button class="dl-btn dl-btn-pdf" onclick="downloadReport('pdf')">
+            📄 Download PDF Report
+          </button>
+          <button class="dl-btn dl-btn-json" onclick="downloadReport('json')">
+            { } Export JSON
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-logo">⬡ DevGuard</div>
+      <div class="footer-tech">Built with Spring Boot + Java · Powered by OWASP · TLS 1.3 Encrypted</div>
+      <div class="footer-links">
+        <a href="#">Documentation</a>
+        <a href="#">API Reference</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Security</a>
+      </div>
+      <div class="footer-copy">© 2025 DevGuard Technologies · DevSecOps Secret Leakage Detection Platform · All rights
+        reserved.</div>
+    </div>
+  </footer>
+
+  <!-- ══════════════ TOAST ══════════════ -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ══════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════ -->
+  <script>
+    /* ─── API ENDPOINTS (easy to swap in production) ─── */
+    const API = {
+      scanText: '/api/scan/text',
+      scanFile: '/api/scan/file',
+      scanZip: '/api/scan/zip',
+      scanGithub: '/api/scan/github',
+      exportPdf: '/api/scan/export/pdf',
+      exportJson: '/api/scan/export/json',
+    };
+
+    /* ─── STATE ─── */
+    let currentResults = null;
+    let activityLog = [
+      { name: 'org/backend-service.git', time: '09:14 AM', high: 3, medium: 1, low: 2 },
+      { name: 'config/application.yml', time: '08:52 AM', high: 0, medium: 2, low: 4 },
+      { name: 'scripts/deploy.sh', time: '08:30 AM', high: 1, medium: 0, low: 1 },
+      { name: 'src/DatabaseConfig.java', time: 'Yesterday', high: 5, medium: 3, low: 0 },
+      { name: 'user/payments-api.git', time: 'Yesterday', high: 2, medium: 4, low: 6 },
+    ];
+
+    /* ─── MOCK DATA ─── */
+    const MOCK_RESULTS = {
+      totalFiles: 12,
+      totalFindings: 17,
+      riskScore: 72,
+      highCount: 5,
+      files: [
+        {
+          name: 'src/main/resources/application.properties',
+          severity: 'HIGH',
+          findings: [
+            { line: 23, type: 'AWS Access Key', value: 'AKIA3X7Y...XAMPLE', severity: 'HIGH' },
+            { line: 24, type: 'AWS Secret Key', value: 'wJalrXUtn...EXAMPLEKEY', severity: 'HIGH' },
+            { line: 31, type: 'Database Password', value: 'db_pass=P@ssw0rd!123', severity: 'HIGH' },
+          ]
+        },
+        {
+          name: 'src/config/DatabaseConfig.java',
+          severity: 'HIGH',
+          findings: [
+            { line: 11, type: 'Hardcoded Credential', value: 'password = "admin123"', severity: 'HIGH' },
+            { line: 45, type: 'JDBC Connection String', value: 'jdbc:mysql://prod-db:3306/...', severity: 'MEDIUM' },
+          ]
+        },
+        {
+          name: 'scripts/deploy.sh',
+          severity: 'MEDIUM',
+          findings: [
+            { line: 7, type: 'GitHub Token', value: 'ghp_xK9m...TOKEN', severity: 'MEDIUM' },
+            { line: 19, type: 'Slack Webhook', value: 'https://hooks.slack.com/services/T0...', severity: 'MEDIUM' },
+          ]
+        },
+        {
+          name: '.env.local',
+          severity: 'HIGH',
+          findings: [
+            { line: 3, type: 'Stripe Secret Key', value: 'sk_live_51H...', severity: 'HIGH' },
+            { line: 5, type: 'SendGrid API Key', value: 'SG.aBcD...xyz', severity: 'MEDIUM' },
+          ]
+        },
+        {
+          name: 'terraform/main.tf',
+          severity: 'MEDIUM',
+          findings: [
+            { line: 88, type: 'Private Key Block', value: '-----BEGIN RSA PRIVATE KEY-----', severity: 'MEDIUM' },
+          ]
+        },
+        {
+          name: 'tests/IntegrationTest.java',
+          severity: 'LOW',
+          findings: [
+            { line: 14, type: 'Test API Key', value: 'test_key_sandbox_abc123', severity: 'LOW' },
+            { line: 28, type: 'Test Password', value: '"password": "test1234"', severity: 'LOW' },
+          ]
+        },
+      ]
+    };
+
+    /* ─── TOAST ─── */
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3200);
+    }
+
+    /* ─── SET LOADING STATE ─── */
+    function setLoading(id, loading) {
+      const btn = document.getElementById('btn-' + id);
+      const spinner = document.getElementById('spinner-' + id);
+      const lbl = document.getElementById('lbl-' + id);
+      btn.disabled = loading;
+      spinner.style.display = loading ? 'block' : 'none';
+      lbl.style.opacity = loading ? '0.5' : '1';
+    }
+
+    /* ─── SCAN TEXT ─── */
+    async function scanText() {
+      const code = document.getElementById('paste-input').value.trim();
+      if (!code) { showToast('⚠ Please paste some code first.'); return; }
+      setLoading('paste', true);
+      showToast('⚡ Scanning code snippet...');
+      try {
+        // Production: const res = await fetch(API.scanText, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
+        // const data = await res.json();
+        await fakeFetch();
+        renderResults(MOCK_RESULTS, 'Code Snippet');
+        showToast('✅ Scan complete! ' + MOCK_RESULTS.totalFindings + ' findings detected.');
+      } catch (e) {
+        showToast('❌ Scan failed. Check API connection.');
+      } finally {
+        setLoading('paste', false);
+      }
+    }
+
+    /* ─── HANDLE FILE CHANGE ─── */
+    function handleFileChange(input) {
+      const f = input.files[0];
+      document.getElementById('upload-filename').textContent = f ? '📎 ' + f.name : '';
+    }
+
+    /* ─── SCAN FILE ─── */
+    async function scanFile() {
+      const input = document.getElementById('file-input');
+      const file = input.files[0];
+      if (!file) { showToast('⚠ Please select a file first.'); return; }
+      setLoading('file', true);
+      showToast('📤 Uploading and scanning ' + file.name + '...');
+      try {
+        // Production:
+        // const formData = new FormData(); formData.append('file', file);
+        // const endpoint = file.name.endsWith('.zip') ? API.scanZip : API.scanFile;
+        // const res = await fetch(endpoint, { method:'POST', body: formData });
+        // const data = await res.json();
+        await fakeFetch(1800);
+        renderResults(MOCK_RESULTS, file.name);
+        showToast('✅ File scan complete! ' + MOCK_RESULTS.totalFindings + ' findings.');
+      } catch (e) {
+        showToast('❌ Upload failed. Check API connection.');
+      } finally {
+        setLoading('file', false);
+      }
+    }
+
+    /* ─── SCAN REPO ─── */
+    async function scanRepo() {
+      const url = document.getElementById('repo-url').value.trim();
+      if (!url) { showToast('⚠ Please enter a GitHub repository URL.'); return; }
+      if (!url.startsWith('http')) { showToast('⚠ Please enter a valid URL starting with https://'); return; }
+      setLoading('repo', true);
+      showToast('🔍 Scanning repository: ' + url);
+      try {
+        // Production:
+        // const res = await fetch(API.scanGithub, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({repoUrl: url}) });
+        // const data = await res.json();
+        await fakeFetch(2400);
+        renderResults(MOCK_RESULTS, url.replace('https://github.com/', ''));
+        showToast('✅ Repository scan complete!');
+      } catch (e) {
+        showToast('❌ Repository scan failed.');
+      } finally {
+        setLoading('repo', false);
+      }
+    }
+
+    /* ─── RENDER RESULTS ─── */
+    function renderResults(data, source) {
+      currentResults = data;
+
+      // Show results section
+      document.getElementById('results-empty').style.display = 'none';
+      document.getElementById('results-wrapper').style.display = 'block';
+
+      // Animate stats
+      animateCounter('stat-files', data.totalFiles);
+      animateCounter('stat-findings', data.totalFindings);
+      animateCounter('stat-score', data.riskScore);
+      animateCounter('stat-high', data.highCount);
+
+      // Risk meter
+      updateRiskMeter(data.riskScore);
+
+      // Findings badge
+      document.getElementById('findings-count-badge').textContent = data.totalFindings + ' findings';
+
+      // File findings
+      renderFindings(data.files);
+
+      // Activity log
+      addActivity(source, data.highCount, data.totalFindings - data.highCount, 0);
+
+      // Scroll to results
+      setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+    }
+
+    /* ─── ANIMATE COUNTER ─── */
+    function animateCounter(id, target) {
+      const el = document.getElementById(id);
+      const dur = 900, start = performance.now();
+      const from = parseInt(el.textContent) || 0;
+      function step(now) {
+        const p = Math.min((now - start) / dur, 1);
+        const ease = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(from + (target - from) * ease);
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    /* ─── RISK METER ─── */
+    function updateRiskMeter(score) {
+      const circumference = 2 * Math.PI * 40; // 251.2
+      const dash = (score / 100) * circumference;
+      const bar = document.getElementById('risk-bar');
+      const pct = document.getElementById('risk-pct');
+      const lbl = document.getElementById('risk-label');
+
+      let color, label, bg;
+      if (score >= 70) { color = 'var(--red)'; label = 'HIGH RISK'; bg = 'var(--red-dim)'; }
+      else if (score >= 40) { color = 'var(--orange)'; label = 'MEDIUM RISK'; bg = 'var(--orange-dim)'; }
+      else { color = 'var(--green)'; label = 'LOW RISK'; bg = 'var(--green-dim)'; }
+
+      bar.style.stroke = color;
+      bar.style.strokeDasharray = `0 ${circumference}`;
+      pct.style.color = color;
+      lbl.style.color = color; lbl.style.background = bg;
+      lbl.textContent = label;
+
+      // Animate
+      setTimeout(() => {
+        bar.style.transition = 'stroke-dasharray 1.2s cubic-bezier(.34,1,.64,1)';
+        bar.style.strokeDasharray = `${dash} ${circumference - dash}`;
+      }, 100);
+
+      // Counter
+      let cur = 0;
+      const iv = setInterval(() => {
+        cur = Math.min(cur + 2, score);
+        pct.textContent = cur + '%';
+        if (cur >= score) clearInterval(iv);
+      }, 20);
+    }
+
+    /* ─── RENDER FINDINGS ─── */
+    function renderFindings(files) {
+      const container = document.getElementById('findings-list');
+      container.innerHTML = '';
+      files.forEach((file, i) => {
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        const sevClass = 'sev-' + file.severity.toLowerCase();
+        const colorClass = file.severity === 'HIGH' ? 'high-item' : file.severity === 'MEDIUM' ? 'medium-item' : 'low-item';
+
+        const findingsHtml = file.findings.map(f => {
+          const cls = f.severity === 'HIGH' ? 'high-item' : f.severity === 'MEDIUM' ? 'medium-item' : 'low-item';
+          return `<div class="finding-item ${cls}">
+        <div class="finding-line">Line ${f.line}</div>
+        <div>
+          <div class="finding-value">${escHtml(f.value)}</div>
+          <div class="finding-type">${escHtml(f.type)}</div>
+        </div>
+      </div>`;
+        }).join('');
+
+        row.innerHTML = `
+      <div class="file-row-header" onclick="toggleRow(this)">
+        <span class="file-name">${escHtml(file.name)}</span>
+        <span class="sev-badge ${sevClass}">${file.severity}</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-mid)">${file.findings.length} findings</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="file-findings">${findingsHtml}</div>
+    `;
+
+        // Auto-open high severity
+        if (file.severity === 'HIGH') {
+          setTimeout(() => { row.classList.add('open'); }, 400 + i * 120);
+        }
+        container.appendChild(row);
+      });
+    }
+
+    function toggleRow(header) {
+      header.parentElement.classList.toggle('open');
+    }
+
+    /* ─── ACTIVITY LOG ─── */
+    function addActivity(name, high, medium, low) {
+      const now = new Date();
+      const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      activityLog.unshift({ name, time, high, medium, low });
+      if (activityLog.length > 8) activityLog.pop();
+      renderActivityLog();
+    }
+
+    function renderActivityLog() {
+      const el = document.getElementById('activity-list');
+      el.innerHTML = activityLog.map(a => {
+        let sevColor = 'var(--green)', sevLabel = 'LOW';
+        if (a.high > 0) { sevColor = 'var(--red)'; sevLabel = 'HIGH'; }
+        else if (a.medium > 0) { sevColor = 'var(--orange)'; sevLabel = 'MED'; }
+        const name = a.name.length > 30 ? a.name.slice(0, 28) + '…' : a.name;
+        return `<div class="activity-item">
+      <div class="act-name" title="${escHtml(a.name)}">${escHtml(name)}</div>
+      <div class="act-meta">
+        <span class="act-time">${a.time}</span>
+        <span class="act-sev" style="color:${sevColor}">${sevLabel} • H:${a.high} M:${a.medium}</span>
+      </div>
+    </div>`;
+      }).join('');
+    }
+
+    /* ─── DOWNLOAD ─── */
+    async function downloadReport(type) {
+      if (!currentResults) {
+        showToast('⚠ Run a scan first to generate a report.');
+        return;
+      }
+      showToast(type === 'pdf' ? '📄 Generating PDF report...' : '{ } Exporting JSON data...');
+      try {
+        // Production:
+        // const endpoint = type === 'pdf' ? API.exportPdf : API.exportJson;
+        // const res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(currentResults) });
+        // const blob = await res.blob();
+        // const url = URL.createObjectURL(blob);
+        // const a = document.createElement('a'); a.href=url; a.download='devguard-report.' + type; a.click();
+
+        // Mock: download JSON client-side
+        if (type === 'json') {
+          const blob = new Blob([JSON.stringify(currentResults, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = 'devguard-report.json'; a.click();
+        }
+        showToast('✅ ' + (type === 'pdf' ? 'PDF Report' : 'JSON Export') + ' downloaded!');
+      } catch (e) {
+        showToast('❌ Export failed.');
+      }
+    }
+
+    /* ─── DRAG & DROP ─── */
+    const zone = document.getElementById('upload-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragging'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragging'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('dragging');
+      const f = e.dataTransfer.files[0];
+      if (f) {
+        const dt = new DataTransfer(); dt.items.add(f);
+        document.getElementById('file-input').files = dt.files;
+        document.getElementById('upload-filename').textContent = '📎 ' + f.name;
+      }
+    });
+
+    /* ─── HELPERS ─── */
+    function fakeFetch(ms = 1500) { return new Promise(r => setTimeout(r, ms)); }
+    function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+    /* ─── INIT ─── */
+    renderActivityLog();
+  </script>
+  <script>
+    /* ─── PRODUCTION API INTEGRATION ─── */
+    const API_BASE = "http://localhost:8080/api/scan";
+
+    /* Override scan functions to use real backend */
+
+    // ── SCAN TEXT (override) ──
+    scanText = async function () {
+      const content = document.getElementById("paste-input").value;
+      if (!content.trim()) { showToast("⚠ Paste some code first."); return; }
+      setLoading("paste", true);
+      showToast("⚡ Scanning code snippet...");
+      try {
+        const res = await fetch(`${API_BASE}/text`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: content })
+        });
+        const data = await res.json();
+        currentResults = data;
+        renderResults(data, "Code Snippet");
+        showToast("✅ Scan complete! " + (data.totalFindings || 0) + " findings detected.");
+      } catch (e) {
+        console.error(e);
+        showToast("❌ Scan failed. Check API connection.");
+      } finally {
+        setLoading("paste", false);
+      }
+    };
+
+    // ── SCAN FILE (override) ──
+    scanFile = async function () {
+      const fileInput = document.getElementById("file-input");
+      if (!fileInput.files.length) { showToast("⚠ Please select a file first."); return; }
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+      setLoading("file", true);
+      showToast("📤 Uploading and scanning " + file.name + "...");
+      try {
+        const endpoint = file.name.endsWith(".zip") ? `${API_BASE}/zip` : `${API_BASE}/file`;
+        const res = await fetch(endpoint, { method: "POST", body: formData });
+        const data = await res.json();
+        currentResults = data;
+        renderResults(data, file.name);
+        showToast("✅ File scan complete! " + (data.totalFindings || 0) + " findings.");
+      } catch (e) {
+        console.error(e);
+        showToast("❌ Upload failed. Check API connection.");
+      } finally {
+        setLoading("file", false);
+      }
+    };
+
+    // ── SCAN REPO (override) ──
+    scanRepo = async function () {
+      const url = document.getElementById("repo-url").value.trim();
+      if (!url) { showToast("⚠ Please enter a GitHub repository URL."); return; }
+      if (!url.startsWith("http")) { showToast("⚠ Please enter a valid URL starting with https://"); return; }
+      setLoading("repo", true);
+      showToast("🔍 Scanning repository: " + url);
+      try {
+        const res = await fetch(`${API_BASE}/github`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repoUrl: url })
+        });
+        const data = await res.json();
+        currentResults = data;
+        renderResults(data, url.replace("https://github.com/", ""));
+        showToast("✅ Repository scan complete!");
+      } catch (e) {
+        console.error(e);
+        showToast("❌ Repository scan failed.");
+      } finally {
+        setLoading("repo", false);
+      }
+    };
+
+    // ── RENDER RESULTS (override) ──
+    // Maps backend response: files[], fileName, lineNumber, matchedValue, severity
+    renderResults = function (data, source) {
+      if (!data) return;
+      currentResults = data;
+
+      // Toggle empty state / results wrapper
+      document.getElementById("results-empty").style.display = "none";
+      document.getElementById("results-wrapper").style.display = "block";
+
+      const files = data.files || [];
+      const totalFiles = data.totalFiles || files.length || 0;
+      const totalFindings = data.totalFindings || 0;
+      const riskScore = data.riskScore || 0;
+
+      // Compute high severity count from actual findings
+      let highCount = 0;
+      files.forEach(function (file) {
+        (file.findings || []).forEach(function (f) {
+          if (f.severity && f.severity.toUpperCase() === "HIGH") highCount++;
+        });
+      });
+
+      // Animate stat counters
+      animateCounter("stat-files", totalFiles);
+      animateCounter("stat-findings", totalFindings);
+      animateCounter("stat-score", riskScore);
+      animateCounter("stat-high", highCount);
+
+      // Update risk meter
+      updateRiskMeter(riskScore);
+
+      // Update findings badge
+      document.getElementById("findings-count-badge").textContent = totalFindings + " findings";
+
+      // Render file-wise findings
+      const container = document.getElementById("findings-list");
+      container.innerHTML = "";
+
+      files.forEach(function (file, i) {
+        var findings = file.findings || [];
+        // Determine highest severity for this file
+        var fileSev = "LOW";
+        findings.forEach(function (f) {
+          var s = (f.severity || "LOW").toUpperCase();
+          if (s === "HIGH") fileSev = "HIGH";
+          else if (s === "MEDIUM" && fileSev !== "HIGH") fileSev = "MEDIUM";
+        });
+
+        var sevClass = "sev-" + fileSev.toLowerCase();
+        var displayName = file.fileName || file.name || "Unknown File";
+
+        var findingsHtml = findings.map(function (f) {
+          var sev = (f.severity || "LOW").toUpperCase();
+          var cls = sev === "HIGH" ? "high-item" : sev === "MEDIUM" ? "medium-item" : "low-item";
+          var lineNum = f.lineNumber != null ? f.lineNumber : (f.line != null ? f.line : "?");
+          var value = f.matchedValue || f.value || f.lineContent || "";
+          var type = f.type || "Unknown";
+          return '<div class="finding-item ' + cls + '">' +
+            '<div class="finding-line">Line ' + lineNum + '</div>' +
+            '<div>' +
+            '<div class="finding-value">' + escHtml(value) + '</div>' +
+            '<div class="finding-type">' + escHtml(type) + ' • ' + sev + '</div>' +
+            '</div>' +
+            '</div>';
+        }).join("");
+
+        var row = document.createElement("div");
+        row.className = "file-row";
+        row.innerHTML =
+          '<div class="file-row-header" onclick="toggleRow(this)">' +
+          '<span class="file-name">' + escHtml(displayName) + '</span>' +
+          '<span class="sev-badge ' + sevClass + '">' + fileSev + '</span>' +
+          '<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-mid)">' + findings.length + ' findings</span>' +
+          '<span class="chevron">▶</span>' +
+          '</div>' +
+          '<div class="file-findings">' + findingsHtml + '</div>';
+
+        // Auto-open HIGH severity files
+        if (fileSev === "HIGH") {
+          setTimeout(function () { row.classList.add("open"); }, 400 + i * 120);
+        }
+        container.appendChild(row);
+      });
+
+      // Activity log
+      var medCount = 0;
+      files.forEach(function (file) {
+        (file.findings || []).forEach(function (f) {
+          if (f.severity && f.severity.toUpperCase() === "MEDIUM") medCount++;
+        });
+      });
+      addActivity(source || "Scan", highCount, medCount, totalFindings - highCount - medCount);
+
+      // Scroll to results
+      setTimeout(function () {
+        document.getElementById("results").scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 200);
+    };
+
+    // ── DOWNLOAD REPORT (override) ──
+    downloadReport = async function (type) {
+      if (!currentResults) {
+        showToast("⚠ Run a scan first to generate a report.");
+        return;
+      }
+      showToast(type === "pdf" ? "📄 Generating PDF report..." : "{ } Exporting JSON data...");
+      try {
+        if (type === "pdf") {
+          const res = await fetch(`${API_BASE}/export/pdf`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(currentResults)
+          });
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href = url; a.download = "devguard-report.pdf"; a.click();
+        } else {
+          const blob = new Blob([JSON.stringify(currentResults, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href = url; a.download = "devguard-report.json"; a.click();
+        }
+        showToast("✅ " + (type === "pdf" ? "PDF Report" : "JSON Export") + " downloaded!");
+      } catch (e) {
+        console.error(e);
+        showToast("❌ Export failed.");
+      }
+    };
+  </script>
+</body>
+</html>
