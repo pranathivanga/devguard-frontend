@@ -1214,16 +1214,13 @@
         <a href="#results">Results</a>
         <a href="#download">Export</a>
       </div>
-      <div class="nav-status">
-        <div class="status-dot"></div>
-        System Active
-      </div>
+
     </div>
   </nav>
 
   <!-- ══════════════ HERO ══════════════ -->
   <section class="hero">
-    <div class="hero-badge">DEVSECOPS PLATFORM v2.5</div>
+
     <h1>Scan Code. <span class="accent">Detect Secrets.</span><br><span class="accent-red">Prevent Leaks.</span></h1>
     <p class="hero-sub">DevGuard continuously scans your repositories, files, and code snippets for exposed API keys,
       passwords, tokens, and credentials — before attackers find them.</p>
@@ -1259,7 +1256,7 @@
         <div class="scan-card">
           <div class="card-icon blue-icon">📁</div>
           <h3>Upload File</h3>
-          <p>Upload a ZIP archive, .java, .env, .txt, or any source file for deep scanning.</p>
+          <p>Supports .java, .txt, .env, .properties, and ZIP archive scanning.</p>
           <div class="upload-zone" id="upload-zone">
             <input type="file" id="file-input" accept=".zip,.java,.txt,.env,.py,.js,.ts,.yaml,.yml,.json,.xml,.sh"
               onchange="handleFileChange(this)" />
@@ -1399,15 +1396,8 @@
   <footer>
     <div class="footer-inner">
       <div class="footer-logo">⬡ DevGuard</div>
-      <div class="footer-tech">Built with Spring Boot + Java · Powered by OWASP · TLS 1.3 Encrypted</div>
-      <div class="footer-links">
-        <a href="#">Documentation</a>
-        <a href="#">API Reference</a>
-        <a href="#">Privacy Policy</a>
-        <a href="#">Security</a>
-      </div>
-      <div class="footer-copy">© 2025 DevGuard Technologies · DevSecOps Secret Leakage Detection Platform · All rights
-        reserved.</div>
+      <div class="footer-tech">DevGuard • Secret Scanning & Risk Analysis Platform</div>
+      <div class="footer-copy">Built using Spring Boot + Java</div>
     </div>
   </footer>
 
@@ -1780,7 +1770,39 @@
   </script>
   <script>
     /* ─── PRODUCTION API INTEGRATION ─── */
-    const API_BASE = "http://localhost:8080/api/scan";
+    const API_BASE = "https://devguard-backend-3.onrender.com/api/scan";
+
+    /**
+     * fetchWithRetry — Gracefully handles Render cold starts & timeouts.
+     * Retries once after a 2-second pause on network/timeout errors.
+     * Uses a 60-second timeout to accommodate Render free-tier cold starts.
+     */
+    async function fetchWithRetry(url, options = {}, retries = 1) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+      try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          throw new Error(`Server error ${res.status}: ${errText || res.statusText}`);
+        }
+        return res;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        // Retry on network / abort (timeout) errors
+        if (retries > 0 && (err.name === "AbortError" || err.name === "TypeError")) {
+          showToast("⏳ Server is waking up... retrying in 2s.");
+          await new Promise(r => setTimeout(r, 2000));
+          return fetchWithRetry(url, options, retries - 1);
+        }
+        // Re-throw with a friendly message
+        if (err.name === "AbortError") {
+          throw new Error("Request timed out. The server may be starting up — please try again in a moment.");
+        }
+        throw err;
+      }
+    }
 
     /* Override scan functions to use real backend */
 
@@ -1791,7 +1813,7 @@
       setLoading("paste", true);
       showToast("⚡ Scanning code snippet...");
       try {
-        const res = await fetch(`${API_BASE}/text`, {
+        const res = await fetchWithRetry(`${API_BASE}/text`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content: content })
@@ -1802,7 +1824,7 @@
         showToast("✅ Scan complete! " + (data.totalFindings || 0) + " findings detected.");
       } catch (e) {
         console.error(e);
-        showToast("❌ Scan failed. Check API connection.");
+        showToast("❌ Scan failed: " + (e.message || "Check API connection."));
       } finally {
         setLoading("paste", false);
       }
@@ -1819,14 +1841,14 @@
       showToast("📤 Uploading and scanning " + file.name + "...");
       try {
         const endpoint = file.name.endsWith(".zip") ? `${API_BASE}/zip` : `${API_BASE}/file`;
-        const res = await fetch(endpoint, { method: "POST", body: formData });
+        const res = await fetchWithRetry(endpoint, { method: "POST", body: formData });
         const data = await res.json();
         currentResults = data;
         renderResults(data, file.name);
         showToast("✅ File scan complete! " + (data.totalFindings || 0) + " findings.");
       } catch (e) {
         console.error(e);
-        showToast("❌ Upload failed. Check API connection.");
+        showToast("❌ Upload failed: " + (e.message || "Check API connection."));
       } finally {
         setLoading("file", false);
       }
@@ -1840,7 +1862,7 @@
       setLoading("repo", true);
       showToast("🔍 Scanning repository: " + url);
       try {
-        const res = await fetch(`${API_BASE}/github`, {
+        const res = await fetchWithRetry(`${API_BASE}/github`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ repoUrl: url })
@@ -1851,7 +1873,7 @@
         showToast("✅ Repository scan complete!");
       } catch (e) {
         console.error(e);
-        showToast("❌ Repository scan failed.");
+        showToast("❌ Repository scan failed: " + (e.message || "Check connection."));
       } finally {
         setLoading("repo", false);
       }
@@ -1966,7 +1988,7 @@
       showToast(type === "pdf" ? "📄 Generating PDF report..." : "{ } Exporting JSON data...");
       try {
         if (type === "pdf") {
-          const res = await fetch(`${API_BASE}/export/pdf`, {
+          const res = await fetchWithRetry(`${API_BASE}/export/pdf`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(currentResults)
@@ -1982,7 +2004,7 @@
         showToast("✅ " + (type === "pdf" ? "PDF Report" : "JSON Export") + " downloaded!");
       } catch (e) {
         console.error(e);
-        showToast("❌ Export failed.");
+        showToast("❌ Export failed: " + (e.message || "Check connection."));
       }
     };
   </script>
